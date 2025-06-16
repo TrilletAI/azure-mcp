@@ -608,6 +608,19 @@ public static class OptionDefinitions
                 IsRequired = false
             };
         }
+
+        public static class Graph
+        {
+            public const string CommandName = "command";
+
+            public static readonly Option<string> Command = new(
+                $"--{CommandName}",
+                "The Microsoft Graph CLI command to execute (without the 'mgc' prefix). For example: 'users list'."
+            )
+            {
+                IsRequired = true
+            };
+        }
     }
 
     public static class KeyVault

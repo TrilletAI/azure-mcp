@@ -24,6 +24,12 @@ RUN apt-get update && apt-get install -y \
     && curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Microsoft Graph CLI
+RUN curl -L https://github.com/microsoftgraph/msgraph-cli/releases/download/v1.9.0/msgraph-cli-linux-x64-1.9.0.tar.gz -o /tmp/mgc.tar.gz \
+    && tar -xzf /tmp/mgc.tar.gz -C /tmp \
+    && mv /tmp/mgc /usr/local/bin/mgc \
+    && rm /tmp/mgc.tar.gz
+
 # Create a non-root user
 RUN useradd -m appuser
 USER appuser

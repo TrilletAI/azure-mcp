@@ -49,15 +49,15 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
         }
         {
           name: 'AZURE_CLIENT_ID'
-          value: 'devdetails'
+          value: 'devcreds'
         }
         {
           name: 'AZURE_CLIENT_SECRET'
-          value: 'devdetails'
+            value: 'devcreds'
         }
         {
           name: 'AZURE_TENANT_ID'
-          value: 'devdetails'
+              value: 'devcreds'
         }
       ]
     }

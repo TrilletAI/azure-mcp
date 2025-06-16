@@ -12,7 +12,7 @@ set -e
 RESOURCE_GROUP="mcp-server-rg-2"
 ACR_NAME="mcpserverregistrym2jy44rp2eo7s"
 IMAGE_NAME="mcp-server"
-IMAGE_TAG="latest"
+IMAGE_TAG=$(date +%Y%m%d%H%M%S)
 BICEP_FILE="infra/deploy-mcp-server.bicep"
 
 # --- Derived Variables ---
