@@ -1,5 +1,5 @@
-@description('The location to deploy the resources.')
-param location string = 'westus'
+@description('The location to deploy the resources. Defaults to the resource group location.')
+param location string = resourceGroup().location
 
 @description('The name of the App Service Plan.')
 param appServicePlanName string = 'mcp-server-plan'
@@ -7,51 +7,46 @@ param appServicePlanName string = 'mcp-server-plan'
 @description('The name of the App Service.')
 param appServiceName string = 'mcp-server-${uniqueString(resourceGroup().id)}'
 
-@description('The Docker image to deploy.')
+@description('The SKU for the App Service Plan.')
+param appServicePlanSku string = 'B1' // Basic tier, good for dev/test
+
+@description('The Docker image to deploy from ACR.')
 param dockerImage string
 
-resource appServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
+resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
   name: appServicePlanName
   location: location
   sku: {
-    name: 'F1'
-    tier: 'Free'
-    size: 'F1'
-    family: 'F'
-    capacity: 1
+    name: appServicePlanSku
   }
-  kind: 'linux'
   properties: {
-    reserved: true
+    reserved: true // This is required for Linux plans
   }
 }
 
-resource appService 'Microsoft.Web/sites@2022-09-01' = {
+resource appService 'Microsoft.Web/sites@2022-03-01' = {
   name: appServiceName
   location: location
-  kind: 'app,linux,container'
   identity: {
     type: 'SystemAssigned'
   }
   properties: {
     serverFarmId: appServicePlan.id
+    httpsOnly: true
     siteConfig: {
       linuxFxVersion: 'DOCKER|${dockerImage}'
+      appCommandLine: '/app/azmcp server start --transport sse'
+      alwaysOn: true // Requires B1 SKU or higher
       acrUseManagedIdentityCreds: true
       appSettings: [
         {
-          name: 'AZURE_MCP_INCLUDE_PRODUCTION_CREDENTIALS'
-          value: 'true'
-        }
-        {
-          name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
-          value: 'false'
+          name: 'ASPNETCORE_URLS'
+          value: 'http://*:80'
         }
       ]
     }
-    httpsOnly: true
   }
 }
 
-output appServiceUrl string = 'https://${appService.properties.defaultHostName}'
-output principalId string = appService.identity.principalId 
+output appServiceName string = appService.name
+output appServiceUrl string = appService.properties.defaultHostName 

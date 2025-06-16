@@ -24,7 +24,16 @@ RUN apt-get update && apt-get install -y \
     && curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
     && rm -rf /var/lib/apt/lists/*
 
+# Create a non-root user
+RUN useradd -m appuser
+USER appuser
+
 # Copy the published application
 COPY --from=publish "/app/publish/linux-x64/dist" .
+
+# Ensure the app user owns the files
+USER root
+RUN chown -R appuser:appuser /app
+USER appuser
 
 CMD ["./azmcp", "server", "start", "--transport", "sse"]
