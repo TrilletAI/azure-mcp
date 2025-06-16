@@ -20,10 +20,11 @@ RUN apt-get update && apt-get install -y \
     apt-transport-https \
     lsb-release \
     gnupg \
+    libx11-6 \
     && curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the published application
 COPY --from=publish "/app/publish/linux-x64/dist" .
 
-ENTRYPOINT ["dotnet", "azmcp.dll", "server", "start"]
+CMD ["./azmcp", "server", "start", "--transport", "sse"]
