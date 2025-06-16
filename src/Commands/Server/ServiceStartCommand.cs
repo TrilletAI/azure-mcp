@@ -70,7 +70,6 @@ public sealed class ServiceStartCommand : BaseCommand
             ConfigureMcpServer(builder.Services, serverOptions);
 
             builder.WebHost
-                .ConfigureKestrel(server => server.ListenAnyIP(serverOptions.Port))
                 .ConfigureLogging(logging =>
                 {
                     logging.AddEventSourceLogger();

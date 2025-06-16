@@ -8,7 +8,7 @@ param appServicePlanName string = 'mcp-server-plan'
 param appServiceName string = 'mcp-server-${uniqueString(resourceGroup().id)}'
 
 @description('The SKU for the App Service Plan.')
-param appServicePlanSku string = 'B1' // Basic tier, good for dev/test
+param appServicePlanSku string = 'S1' // Standard tier, better for performance
 
 @description('The Docker image to deploy from ACR.')
 param dockerImage string
@@ -40,8 +40,24 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
       acrUseManagedIdentityCreds: true
       appSettings: [
         {
-          name: 'ASPNETCORE_URLS'
-          value: 'http://*:80'
+          name: 'ASPNETCORE_HTTP_PORTS'
+          value: '80'
+        }
+        {
+          name: 'AZURE_MCP_INCLUDE_PRODUCTION_CREDENTIALS'
+          value: 'true'
+        }
+        {
+          name: 'AZURE_CLIENT_ID'
+          value: 'devdetails'
+        }
+        {
+          name: 'AZURE_CLIENT_SECRET'
+          value: 'devdetails'
+        }
+        {
+          name: 'AZURE_TENANT_ID'
+          value: 'devdetails'
         }
       ]
     }
@@ -49,4 +65,4 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
 }
 
 output appServiceName string = appService.name
-output appServiceUrl string = appService.properties.defaultHostName 
+output appServiceUrl string = appService.properties.defaultHostName
