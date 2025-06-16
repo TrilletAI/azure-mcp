@@ -39,26 +39,7 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
       alwaysOn: true // Requires B1 SKU or higher
       acrUseManagedIdentityCreds: true
       appSettings: [
-        {
-          name: 'ASPNETCORE_HTTP_PORTS'
-          value: '80'
-        }
-        {
-          name: 'AZURE_MCP_INCLUDE_PRODUCTION_CREDENTIALS'
-          value: 'true'
-        }
-        {
-          name: 'AZURE_CLIENT_ID'
-          value: 'devcreds'
-        }
-        {
-          name: 'AZURE_CLIENT_SECRET'
-            value: 'devcreds'
-        }
-        {
-          name: 'AZURE_TENANT_ID'
-              value: 'devcreds'
-        }
+
       ]
     }
   }

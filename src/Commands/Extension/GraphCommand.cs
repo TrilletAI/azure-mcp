@@ -17,6 +17,8 @@ public sealed class GraphCommand(ILogger<GraphCommand> logger, int processTimeou
     private readonly int _processTimeoutSeconds = processTimeoutSeconds;
     private readonly Option<string> _commandOption = OptionDefinitions.Extension.Graph.Command;
     private static string? _cachedMgcPath;
+    private volatile bool _isAuthenticated = false;
+    private static readonly SemaphoreSlim _authSemaphore = new(1, 1);
 
     private static readonly string[] MgcPaths =
     [
@@ -53,6 +55,58 @@ public sealed class GraphCommand(ILogger<GraphCommand> logger, int processTimeou
         return options;
     }
 
+    private async Task<bool> AuthenticateWithAzureCredentialsAsync(IExternalProcessService processService, ILogger logger)
+    {
+        if (_isAuthenticated)
+        {
+            return true;
+        }
+
+        await _authSemaphore.WaitAsync();
+        try
+        {
+            // Double-check after acquiring the lock
+            if (_isAuthenticated)
+            {
+                return true;
+            }
+
+            // The mgc CLI will automatically use the AZURE_* environment variables 
+            // when --strategy Environment is used. These variables are set in the 
+            // deployment environment (e.g., App Service Configuration).
+            var clientId = Environment.GetEnvironmentVariable("AZURE_CLIENT_ID");
+            if (string.IsNullOrEmpty(clientId))
+            {
+                logger.LogInformation("AZURE_CLIENT_ID environment variable not set. Skipping service principal login for mgc.");
+                return false;
+            }
+
+            var mgcPath = FindMgcPath() ?? throw new FileNotFoundException("Microsoft Graph CLI executable not found.");
+
+            var loginCommand = "login --strategy Environment";
+            var result = await processService.ExecuteAsync(mgcPath, loginCommand, 60);
+
+            if (result.ExitCode != 0)
+            {
+                logger.LogError("Failed to authenticate with Microsoft Graph CLI using service principal. Exit Code: {ExitCode}, Error: {Error}", result.ExitCode, result.Error);
+                return false;
+            }
+
+            _isAuthenticated = true;
+            logger.LogInformation("Successfully authenticated with Microsoft Graph CLI using service principal.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Exception during service principal authentication for MGC.");
+            return false;
+        }
+        finally
+        {
+            _authSemaphore.Release();
+        }
+    }
+
     [McpServerTool(Destructive = false, ReadOnly = true, Title = _commandTitle)]
     public override async Task<CommandResponse> ExecuteAsync(CommandContext context, ParseResult parseResult)
     {
@@ -70,6 +124,8 @@ public sealed class GraphCommand(ILogger<GraphCommand> logger, int processTimeou
             var command = options.Command;
 
             var processService = context.GetService<IExternalProcessService>();
+
+            await AuthenticateWithAzureCredentialsAsync(processService, _logger);
 
             var mgcPath = FindMgcPath() ?? throw new FileNotFoundException("Microsoft Graph CLI executable not found in PATH or common installation locations. Please ensure Microsoft Graph CLI is installed.");
             var result = await processService.ExecuteAsync(mgcPath, command, _processTimeoutSeconds);
