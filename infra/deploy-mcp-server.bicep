@@ -39,8 +39,49 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
       alwaysOn: true // Requires B1 SKU or higher
       acrUseManagedIdentityCreds: true
       appSettings: [
-
+        {
+          name: 'ASPNETCORE_HTTP_PORTS'
+          value: '80'
+        }
+        {
+          name: 'AZURE_CLIENT_ID'
+          value: 'update'
+        }
+        {
+          name: 'AZURE_CLIENT_SECRET'
+          value: 'update'
+        }
+        {
+          name: 'AZURE_TENANT_ID'
+          value: 'Update'
+        }
       ]
+    }
+  }
+}
+
+resource authSettings 'Microsoft.Web/sites/config@2022-03-01' = {
+  parent: appService
+  name: 'authsettingsV2'
+  properties: {
+    platform: {
+      enabled: true
+    }
+    globalValidation: {
+      unauthenticatedClientAction: 'Return401'
+    }
+    identityProviders: {
+      azureActiveDirectory: {
+        enabled: true
+        registration: {
+          openIdIssuer: 'https://login.microsoftonline.com/0c2dd5df-aa62-427a-929d-cec4f822d83c'
+          clientId: 'clientID'
+          clientSecretSettingName: 'secret'
+        }
+        login: {
+          loginParameters: [ 'scope=openid profile email' ]
+        }
+      }
     }
   }
 }

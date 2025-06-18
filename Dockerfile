@@ -42,4 +42,4 @@ USER root
 RUN chown -R appuser:appuser /app
 USER appuser
 
-CMD ["./azmcp", "server", "start", "--transport", "sse"]
+CMD ["./azmcp/azmcp", "server", "start", "--transport", "sse"]

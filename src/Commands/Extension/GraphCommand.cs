@@ -107,10 +107,11 @@ public sealed class GraphCommand(ILogger<GraphCommand> logger, int processTimeou
         }
     }
 
-    [McpServerTool(Destructive = false, ReadOnly = true, Title = _commandTitle)]
+    [McpServerTool(Destructive = true, ReadOnly = false, Title = _commandTitle)]
     public override async Task<CommandResponse> ExecuteAsync(CommandContext context, ParseResult parseResult)
     {
         var options = BindOptions(parseResult);
+        string? generatedPassword = null;
 
         try
         {
@@ -123,6 +124,15 @@ public sealed class GraphCommand(ILogger<GraphCommand> logger, int processTimeou
 
             var command = options.Command;
 
+            if (command.Contains("users patch", StringComparison.OrdinalIgnoreCase) &&
+                command.Contains("{generate_password}", StringComparison.OrdinalIgnoreCase))
+            {
+                generatedPassword = GenerateRandomPassword();
+                command = command.Replace("{generate_password}", generatedPassword, StringComparison.OrdinalIgnoreCase);
+            }
+
+            _logger.LogInformation("Attempting to execute MGC command: {Command}", command);
+
             var processService = context.GetService<IExternalProcessService>();
 
             await AuthenticateWithAzureCredentialsAsync(processService, _logger);
@@ -132,7 +142,7 @@ public sealed class GraphCommand(ILogger<GraphCommand> logger, int processTimeou
 
             if (string.IsNullOrWhiteSpace(result.Error) && result.ExitCode == 0)
             {
-                return HandleSuccess(result, command, context.Response);
+                return HandleSuccess(result, command, context.Response, generatedPassword);
             }
             else
             {
@@ -148,7 +158,31 @@ public sealed class GraphCommand(ILogger<GraphCommand> logger, int processTimeou
         return context.Response;
     }
 
-    private static string? FindMgcPath()
+    private static string GenerateRandomPassword(int length = 16)
+    {
+        const string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const string lower = "abcdefghijklmnopqrstuvwxyz";
+        const string digits = "0123456789";
+        const string symbols = "!@#%^*()-_=+[]{};:,./?";
+
+        var allChars = upper + lower + digits + symbols;
+        var password = new char[length];
+        // Ensure the password has at least one of each character type
+        password[0] = upper[Random.Shared.Next(upper.Length)];
+        password[1] = lower[Random.Shared.Next(lower.Length)];
+        password[2] = digits[Random.Shared.Next(digits.Length)];
+        password[3] = symbols[Random.Shared.Next(symbols.Length)];
+
+        for (int i = 4; i < length; i++)
+        {
+            password[i] = allChars[Random.Shared.Next(allChars.Length)];
+        }
+
+        // Shuffle the password to randomize character positions
+        return new string(password.OrderBy(c => Random.Shared.Next()).ToArray());
+    }
+
+    public static string? FindMgcPath()
     {
         // Return cached path if available and still exists
         if (!string.IsNullOrEmpty(_cachedMgcPath) && File.Exists(_cachedMgcPath))
@@ -193,12 +227,17 @@ public sealed class GraphCommand(ILogger<GraphCommand> logger, int processTimeou
         return null;
     }
 
-    private static CommandResponse HandleSuccess(ProcessResult result, string command, CommandResponse response)
+    private static CommandResponse HandleSuccess(ProcessResult result, string command, CommandResponse response, string? generatedPassword = null)
     {
         var contentResults = new List<string>();
         if (!string.IsNullOrWhiteSpace(result.Output))
         {
             contentResults.Add(result.Output);
+        }
+
+        if (!string.IsNullOrEmpty(generatedPassword))
+        {
+            contentResults.Add($"Password successfully reset. New temporary password: {generatedPassword}");
         }
         
         response.Results = ResponseResult.Create(contentResults, JsonSourceGenerationContext.Default.ListString);
